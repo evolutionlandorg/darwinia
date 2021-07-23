@@ -8,8 +8,26 @@ use crate::{weights::frame_system::WeightInfo, *};
 
 pub struct BaseFilter;
 impl Filter<Call> for BaseFilter {
-	fn filter(_: &Call) -> bool {
-		true
+	fn filter(call: &Call) -> bool {
+		match call {
+			// Pause Ethereum -> Darwinia bridge
+			// Around UTC 07-30-2021, 05:00 AM
+			//
+			// Due to EIP-1559, which introduces a new field in header
+			// And this break the header's scale-codec data
+			// The on-chain storage need to be migrated
+			//
+			// Ensure there is no new affirmation
+			// Then apply the migration (runtime upgrade) at UTC 07-30-2021, 10:00 AM
+			// For the started games, we expected the rounds could be finished during 05:00 AM ~ 10:00 AM
+			// TODO: remove this filter in the next runtime upgrade to restart the bridge
+			Call::EthereumRelay(darwinia_ethereum_relay::Call::affirm(..))
+				if System::block_number() > 4367266 =>
+			{
+				false
+			}
+			_ => true,
+		}
 	}
 }
 
